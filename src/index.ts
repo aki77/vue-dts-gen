@@ -8,15 +8,15 @@ export type Options = {
   outDir?: string
 }
 
-let vueCompiler: typeof import('@vue/compiler-sfc')
+let vueCompiler: typeof import('vue-template-compiler')
 
 const getVueCompiler = () => {
   if (!vueCompiler) {
     try {
-      vueCompiler = require(path.resolve('node_modules/@vue/compiler-sfc'))
+      vueCompiler = require(path.resolve('node_modules/vue-template-compiler'))
     } catch (error) {
       if (error.code === 'MODULE_NOT_FOUND') {
-        throw new Error(`@vue/compiler-sfc is not founded in ./node_modules`)
+        throw new Error(`vue-template-compiler is not founded in ./node_modules`)
       }
       throw error
     }
@@ -48,21 +48,14 @@ export async function build({ input, outDir }: Options) {
   await Promise.all(
     files.map(async (file) => {
       const content = await fs.promises.readFile(file, 'utf8')
-      const sfc = vueCompiler.parse(content)
-      const { script, scriptSetup } = sfc.descriptor
-      if (script || scriptSetup) {
+      const sfc = vueCompiler.parseComponent(content)
+      const { script } = sfc
+      if (script) {
         let content = ''
         let isTS = false
         if (script && script.content) {
           content += script.content
           if (script.lang === 'ts') isTS = true
-        }
-        if (scriptSetup) {
-          const compiled = vueCompiler.compileScript(sfc.descriptor, {
-            id: 'xxx',
-          })
-          content += compiled.content
-          if (scriptSetup.lang === 'ts') isTS = true
         }
         const sourceFile = project.createSourceFile(
           path.relative(process.cwd(), file) + (isTS ? '.ts' : '.js'),
